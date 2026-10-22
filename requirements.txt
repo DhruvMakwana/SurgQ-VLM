@@ -1,0 +1,22 @@
+# SurgQ-VLM — pinned to the versions used for the paper's experiments.
+# Python 3.11. CUDA 12.1 wheels for torch:
+#   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu121
+
+torch==2.5.1
+torchvision==0.20.1
+transformers==5.5.0
+peft==0.18.1
+accelerate==1.13.0
+bitsandbytes==0.49.2        # 8-bit AdamW (GPU only; optional on CPU)
+einops==0.8.2
+numpy==2.4.4
+pillow==12.2.0
+tqdm==4.67.3
+PyYAML==6.0.3
+huggingface_hub==1.10.1
+safetensors==0.7.0
+
+# Optional but recommended on A100/H100 (30-40% faster attention):
+#   pip install flash-attn==2.8.3 --no-build-isolation
+# Optional faster metric backends (built-in fallbacks exist):
+#   pip install rouge-score nltk

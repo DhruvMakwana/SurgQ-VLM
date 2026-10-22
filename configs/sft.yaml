@@ -1,0 +1,62 @@
+# SurgQ-VLM Stage 1 — Supervised Fine-Tuning (paper recipe, 7B)
+#
+# Trains the question-conditioned dual-stream compressor and the LoRA
+# adapters jointly with Q-type inverse-frequency loss weighting.
+# Hardware reference: 1× A100 80 GB (gradient checkpointing + 8-bit AdamW
+# keep peak memory well under 80 GB at batch_size 8).
+#
+# Any field here can be overridden on the command line, e.g.:
+#     python train_sft.py --config configs/sft.yaml --batch_size 4
+
+experiment_name: sft
+description: >
+  Paper SFT recipe: Qwen2.5-VL-7B-Instruct + LoRA (attention+FFN, r=16) +
+  dual-stream question-conditioned compressor, trained jointly on the full
+  18-Q-type mixture with inverse-frequency loss weighting.
+
+# ── Model ──────────────────────────────────────────────────────────────────
+model_size: 7b
+
+# ── LoRA ───────────────────────────────────────────────────────────────────
+lora_mode: attention_and_ffn      # q,k,v,o + gate,up,down projections
+lora_r: 16
+lora_alpha: 32.0
+lora_dropout: 0.0                 # single-epoch training cannot overfit
+
+# ── Optimisation ───────────────────────────────────────────────────────────
+learning_rate: 2.0e-4             # peak LR after warmup
+warmup_steps: 50
+lr_schedule: cosine
+weight_decay: 0.01
+max_grad_norm: 1.0
+num_epochs: 1
+batch_size: 8
+grad_accum_steps: 8               # effective batch = 64
+
+# ── Loss weighting ─────────────────────────────────────────────────────────
+loss_weight_mode: inverse_freq    # upweight rare Q-types
+loss_weight_cap: 5.0              # rare-type weight cap: 5 × median
+
+# ── Memory / performance ───────────────────────────────────────────────────
+gradient_checkpointing: true
+num_workers: 8
+use_8bit_adam: true
+
+# ── Data ───────────────────────────────────────────────────────────────────
+data_root: datasets
+
+# ── Validation / checkpointing ─────────────────────────────────────────────
+output_dir: checkpoints
+val_every_epochs: 1
+early_stop_patience: 0            # disabled for the 1-epoch run
+val_every_steps: 400              # mid-epoch safety checkpoint + curated eval
+step_val_batches: 20              # loss-only divergence check size
+max_seq_len: 1024
+gen_max_new_tokens: 64            # covers the longest templated answer
+seed: 42
+
+# Curated generative-validation subset (built by data_prep/build_splits.py).
+# Drives best-checkpoint selection; training falls back to loss-only
+# monitoring if these files are missing.
+curated_val_split: datasets/splits/curated_val.txt
+curated_val_qids: datasets/splits/curated_val_qids.json

@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+
+# Training artifacts
+checkpoints/
+*.pt
+*.log
+
+# Data (downloaded / generated locally — never committed)
+datasets/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

@@ -1,0 +1,76 @@
+# SurgQ-VLM Stage 2 — GRPO post-training (paper recipe)
+#
+# Warm-starts from the Stage 1 SFT checkpoint. The compressor is frozen;
+# only the LoRA adapters receive gradients. Reward:
+#     R = R1 + 0.3·R2 + 0.05·R3 − 0.3·R_len
+# Hardware reference: 1× A100 80 GB, ~1 day for one epoch at G=8.
+#
+# Any field here can be overridden on the command line, e.g.:
+#     python train_grpo.py --config configs/grpo.yaml --num_rollouts 4
+
+experiment_name: grpo
+description: >
+  Paper GRPO recipe: G=8 rollouts, answer-type-aware reward with format
+  anti-hack penalty, DAPO decoupled clipping, KL to the frozen SFT
+  reference, dynamic sampling, Q-type inverse-frequency reward weighting.
+
+# ── Model (must match the SFT warm-start architecture) ─────────────────────
+model_size: 7b
+lora_mode: attention_and_ffn
+lora_r: 16
+lora_alpha: 32.0
+lora_dropout: 0.0
+freeze_compressor: true           # compressor frozen after SFT
+warm_start_from: checkpoints/sft  # Stage 1 output directory
+
+# ── Rollout ────────────────────────────────────────────────────────────────
+num_rollouts: 8                   # G: candidates per prompt
+temperature: 1.0
+top_p: 0.95
+max_new_tokens: 384               # reasoning trace + answer
+
+# ── Reward weights ─────────────────────────────────────────────────────────
+# R2 and R_len share the same weight so format reward and length penalty
+# exert equal and opposite pressure. R3 was reduced 0.2 → 0.05 after the
+# pilot run revealed annotation-lookup reward hacking (paper §3.6).
+reward_r1_weight: 1.0             # answer correctness (structure-dispatched)
+reward_r2_weight: 0.3             # reasoning format + anti-hack penalty
+reward_r3_weight: 0.05            # temporal coherence (6 temporal Q-types)
+reward_len_weight: 0.3            # overlong penalty
+
+# ── Policy optimisation ────────────────────────────────────────────────────
+kl_coeff: 0.04                    # KL penalty to the frozen SFT reference
+clip_low: 0.2                     # DAPO ε_low
+clip_high: 0.28                   # DAPO ε_high (asymmetric: encourages exploration)
+learning_rate: 5.0e-7
+warmup_steps: 20
+lr_schedule: cosine
+weight_decay: 0.01
+max_grad_norm: 1.0
+num_epochs: 1
+batch_size: 4                     # prompts per step (each gets G rollouts)
+grad_accum_steps: 2               # effective batch = 8 prompts (64 rollouts)
+
+# ── Q-type weighting + dynamic sampling ────────────────────────────────────
+loss_weight_mode: inverse_freq
+loss_weight_cap: 5.0
+oversample_factor: 2              # load 2×batch, keep mixed-reward prompts
+
+# ── Data ───────────────────────────────────────────────────────────────────
+data_root: datasets
+data_fraction: 1.0                # 0.05 was used for the reward pilot (§3.6)
+
+# ── Memory / performance ───────────────────────────────────────────────────
+gradient_checkpointing: true
+num_workers: 4
+use_8bit_adam: true
+val_batch_size: 8
+
+# ── Validation / checkpointing ─────────────────────────────────────────────
+output_dir: checkpoints
+val_every_epochs: 1
+val_every_steps: 500              # mid-training generative eval (200 samples)
+val_gen_samples: 500              # epoch-end generative eval size
+save_every_steps: 200             # periodic safety checkpoint
+max_seq_len: 2048
+seed: 42
