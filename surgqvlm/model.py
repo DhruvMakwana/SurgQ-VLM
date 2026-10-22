@@ -337,10 +337,20 @@ class SurgQVLM(nn.Module):
         # inference convenience but breaks the custom training forward
         # (direct access to model.visual submodules + a separate compressor
         # module on one device + LoRA wrapping after loading).
+        #
+        # A SINGLE-device map ({"": 0}) is different: it places the whole
+        # model on one GPU without sharding hooks. transformers validates
+        # flash_attention_2 against the load-time device, so loading on CPU
+        # first (and moving later) is rejected — place on the GPU directly.
+        _device_map = {"": 0} if torch.cuda.is_available() else None
+        if _attn_impl == "flash_attention_2" and _device_map is None:
+            _attn_impl = "sdpa"   # FA2 requires a CUDA device at load time
+            logger.info("No CUDA at load time — falling back to sdpa attention.")
         self.qwen_model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             config.hf_name,
             torch_dtype         = torch.bfloat16,
             attn_implementation = _attn_impl,
+            device_map          = _device_map,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(config.hf_name)
 
