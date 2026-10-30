@@ -5,6 +5,8 @@ Reinforcement for Surgical Video Question Answering** (WACV 2027)
 
 Dhruv Makwana, Ananya Mantravadi · Centific Global Solutions
 
+🤗 **Weights:** [dhruvmakwana/SurgQ-VLM-7B](https://huggingface.co/dhruvmakwana/SurgQ-VLM-7B) · **Paper:** link coming soon
+
 SurgQ-VLM is a two-stage vision-language model for surgical video question
 answering on laparoscopic cholecystectomy:
 
@@ -189,14 +191,22 @@ and temporal accuracy at ±1/±2/±3 s.
 
 ## 5. Pretrained weights
 
-> **Coming soon:** the weight files are yet to be uploaded; download links
-> will be added here.
+Weights are on Hugging Face:
+**[dhruvmakwana/SurgQ-VLM-7B](https://huggingface.co/dhruvmakwana/SurgQ-VLM-7B)**
+(CC BY-NC-SA 4.0).
 
-Lean weight files (compressor + LLM LoRA adapters, ~0.8 GB each; produced
-by `scripts/export_weights.py`) will be released for the SFT and GRPO stages.
-Download one and evaluate without any training directory:
+| File | Stage |
+|------|-------|
+| [`surgqvlm_grpo_weights.pt`](https://huggingface.co/dhruvmakwana/SurgQ-VLM-7B/blob/main/surgqvlm_grpo_weights.pt) | SFT + GRPO (headline model) |
+| [`surgqvlm_sft_weights.pt`](https://huggingface.co/dhruvmakwana/SurgQ-VLM-7B/blob/main/surgqvlm_sft_weights.pt) | SFT only |
+
+Each is a lean weight file (compressor + LLM LoRA adapters, ~0.86 GB;
+produced by `scripts/export_weights.py`). Download one and evaluate without
+any training directory:
 
 ```bash
+hf download dhruvmakwana/SurgQ-VLM-7B surgqvlm_grpo_weights.pt --local-dir .
+
 python evaluate.py --weights surgqvlm_grpo_weights.pt \
     --model_config configs/sft.yaml --split test --eval_batch_size 24 \
     --gen_max_new_tokens 384
