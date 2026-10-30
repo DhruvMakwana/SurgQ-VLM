@@ -189,8 +189,11 @@ and temporal accuracy at ±1/±2/±3 s.
 
 ## 5. Pretrained weights
 
+> **Coming soon:** the weight files are yet to be uploaded; download links
+> will be added here.
+
 Lean weight files (compressor + LLM LoRA adapters, ~0.8 GB each; produced
-by `scripts/export_weights.py`) are released for the SFT and GRPO stages.
+by `scripts/export_weights.py`) will be released for the SFT and GRPO stages.
 Download one and evaluate without any training directory:
 
 ```bash
