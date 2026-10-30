@@ -1,7 +1,9 @@
 # SurgQ-VLM
 
 **Question-Conditioned Dual-Stream Compression and Answer-Type-Aware
-Reinforcement for Procedural Video Reasoning** (WACV 2027)
+Reinforcement for Surgical Video Question Answering** (WACV 2027)
+
+Dhruv Makwana, Ananya Mantravadi · Centific Global Solutions
 
 SurgQ-VLM is a two-stage vision-language model for surgical video question
 answering on laparoscopic cholecystectomy:
@@ -161,14 +163,18 @@ python train_sft.py --config configs/sft.yaml --batch_size 4 --num_workers 4
 
 ```bash
 # The paper's headline numbers: GRPO checkpoint on the sealed test split
-# (batch 32 and the default 64 generated tokens match the paper's eval runs)
-python evaluate.py --experiment_name grpo --split test --eval_batch_size 32
+# (the paper's eval runs used greedy decoding, batch 24, and 384 new tokens
+#  for GRPO / 192 for SFT; GRPO answers include a reasoning trace)
+python evaluate.py --experiment_name grpo --split test --eval_batch_size 24 \
+    --gen_max_new_tokens 384
 
 # SFT-only ablation row
-python evaluate.py --experiment_name sft --split test --eval_batch_size 32
+python evaluate.py --experiment_name sft --split test --eval_batch_size 24 \
+    --gen_max_new_tokens 192
 
 # Downloaded release weights (no training directory needed)
-python evaluate.py --weights surgqvlm_grpo_weights.pt --split test --eval_batch_size 32
+python evaluate.py --weights surgqvlm_grpo_weights.pt --split test \
+    --eval_batch_size 24 --gen_max_new_tokens 384
 ```
 
 Writes per-sample predictions (`eval_test_*.jsonl`) and an aggregated
@@ -189,7 +195,8 @@ Download one and evaluate without any training directory:
 
 ```bash
 python evaluate.py --weights surgqvlm_grpo_weights.pt \
-    --model_config configs/sft.yaml --split test --eval_batch_size 32
+    --model_config configs/sft.yaml --split test --eval_batch_size 24 \
+    --gen_max_new_tokens 384
 ```
 
 Expected sealed-test scores (21,840 QA pairs):
@@ -199,8 +206,8 @@ Expected sealed-test scores (21,840 QA pairs):
 | SFT               | 0.754 | 0.722 |
 | SFT + GRPO        | 0.779 | 0.743 |
 
-GRPO seed-to-seed variance is ±0.0003 K-Acc (three seeds reported in the
-paper's rebuttal), so independent reruns land within 0.1 pp of these values.
+GRPO seed-to-seed variance is ±0.0003 K-Acc (three seeds, reported in the
+paper), so independent reruns land within 0.1 pp of these values.
 Loading uses `load_state_dict(strict=False)`: the frozen Qwen base weights
 come from the HuggingFace download, and keys stripped by the exporter (the
 frozen embedding table and the identity ViT adapters) keep their
@@ -237,7 +244,8 @@ directory containing `splits/train.txt` and `splits/val.txt`.)
 ```bibtex
 @inproceedings{surgqvlm2027,
   title     = {SurgQ-VLM: Question-Conditioned Dual-Stream Compression and
-               Answer-Type-Aware Reinforcement for Procedural Video Reasoning},
+               Answer-Type-Aware Reinforcement for Surgical Video Question Answering},
+  author    = {Makwana, Dhruv and Mantravadi, Ananya},
   booktitle = {Proceedings of the IEEE/CVF Winter Conference on Applications
                of Computer Vision (WACV)},
   year      = {2027},
@@ -246,7 +254,8 @@ directory containing `splits/train.txt` and `splits/val.txt`.)
 
 ## Acknowledgements
 
-The compressor design builds on
+This work was funded by Centific Global Solutions, which also provided the
+compute resources. The compressor design builds on
 [HICom](https://github.com/lntzm/HICom) (Liu et al., CVPR 2025); the
 backbone is [Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL); the source
 datasets are Cholec80 (Twinanda et al., 2017) and CholecT50 (Nwoye et al.,
